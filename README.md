@@ -1,9 +1,9 @@
-## 👋 php template config files 🚀  
+## 👋  template config files 🚀  
 
 ### Install
   
 ```shell
-bash -c "$(https://github.com/templatemgr/php/raw/main/install.sh)"
+bash -c "$(curl -q -LSsf "https://github.com/templatemgr/template/raw/main/install.sh")"
 ```
   
 ## Author  
