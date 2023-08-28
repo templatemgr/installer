@@ -37,21 +37,30 @@ INSTALL_SH_EXIT_STATUS=0
 # Define Variables
 TEMPLATE_NAME="sample-template"
 CONFIG_CHECK_FILE=""
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 TMP_DIR="/tmp/config-$TEMPLATE_NAME"
-GIT_REPO="https://github.com/templatemgr/$TEMPLATE_NAME"
 CONFIG_DIR="/usr/local/share/template-files/config/$TEMPLATE_NAME"
+INIT_DIR="/usr/local/etc/docker/init.d"
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+GIT_REPO="https://github.com/templatemgr/$TEMPLATE_NAME"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 [ "$TEMPLATE_NAME" = "sample-template" ] && exit 1
-[ -n "$DEFAULT_CONF_DIR" ] && DEFAULT_CONF_DIR="$DEFAULT_CONF_DIR/$TEMPLATE_NAME"||DEFAULT_CONF_DIR="$CONFIG_DIR"
+[ -n "$DEFAULT_CONF_DIR" ] && DEFAULT_CONF_DIR="$DEFAULT_CONF_DIR/$TEMPLATE_NAME" || DEFAULT_CONF_DIR="$CONFIG_DIR"
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+git clone "$GIT_REPO" "$TMP_DIR" || exit 1
+[ -f "/etc/$TEMPLATE_NAME" ] && rm -Rf /etc/${TEMPLATE_NAME:?} || true
+[ -d "/etc/$TEMPLATE_NAME" ] && rm -Rf /etc/${TEMPLATE_NAME:?}/* || true
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Main application
 mkdir -p "/etc/$TEMPLATE_NAME"
-rm -Rf /etc/${TEMPLATE_NAME:?}/*
 [ -d "$DEFAULT_CONF_DIR" ] || mkdir -p "$DEFAULT_CONF_DIR"
-git clone -q "$GIT_REPO" "$TMP_DIR/" || exit 1
-[ -f "$TMP_DIR/config/.gitkeep" ] && rm -Rf "$TMP_DIR/config/.gitkeep"
-cp -Rf "$TMP_DIR/config/." "$DEFAULT_CONF_DIR/" && [ -f "$DEFAULT_CONF_DIR/$CONFIG_CHECK_FILE" ] || INSTALL_SH_EXIT_STATUS=1
-
+[ -f "$TMP_DIR/config/.gitkeep" ] && rm -Rf "$TMP_DIR/config/.gitkeep" || true
+[ -f "$TMP_DIR/init-scripts/.gitkeep" ] && rm -Rf "$TMP_DIR/init-scripts/.gitkeep" || true
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+[ -e "$TMP_DIR/config" ] && cp -Rf "$TMP_DIR/config/." "$DEFAULT_CONF_DIR/" || true
+[ -e "$TMP_DIR/init-scripts" ] && cp -Rf "$TMP_DIR/init-scripts/." "$INIT_DIR/" || true
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+[ -f "$DEFAULT_CONF_DIR/$CONFIG_CHECK_FILE" ] || INSTALL_SH_EXIT_STATUS=1
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # End application
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
