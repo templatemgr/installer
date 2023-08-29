@@ -26,7 +26,7 @@
 # shellcheck disable=SC2317
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # BASH_SET_SAVED_OPTIONS=$(set +o)
-[ "$DEBUGGER" = "on" ] && echo "Enabling debugging" && set -ex
+[ "$DEBUGGER" = "on" ] && echo "Enabling debugging" && set -x
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Set default exit code
 INSTALL_SH_EXIT_STATUS=0
@@ -62,6 +62,9 @@ git clone -q "$GIT_REPO" "$TMP_DIR" || exit 1
 mkdir -p "$CONFIG_DIR" "$INIT_DIR"
 find "$TMP_DIR/" -iname '.gitkeep' -exec rm -f {} \;
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# custom pre execution commands
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 get_dir_list="$(__find_directory_relative "$TMP_DIR/config" || false)"
 if [ -n "$get_dir_list" ]; then
   for dir in $get_dir_list; do
@@ -78,7 +81,7 @@ if [ -n "$get_file_list" ]; then
     if [ -d "$TMP_DIR/config/$conf" ]; then
       cp -Rf "$TMP_DIR/config/$conf/." "/etc/$conf/"
       cp -Rf "$TMP_DIR/config/$conf/." "$CONFIG_DIR/$conf/"
-    elif [ -e "TMP_DIR/config/$config" ]; then
+    elif [ -e "$TMP_DIR/config/$config" ]; then
       cp -Rf "$TMP_DIR/config/$conf" "/etc/$conf"
       cp -Rf "$TMP_DIR/config/$conf" "$CONFIG_DIR/$conf"
     fi
@@ -104,7 +107,7 @@ fi
 [ -d "$TMP_DIR" ] && rm -Rf "$TMP_DIR"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 if [ -n "$CONFIG_CHECK_FILE" ] && [ ! -f "$CONFIG_DIR/$CONFIG_CHECK_FILE" ]; then
-  echo "Can not find a config file in $CONFIG_DIR"
+  echo "Can not find a config file: $CONFIG_DIR$CONFIG_CHECK_FILE"
   INSTALL_SH_EXIT_STATUS=1
 fi
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
