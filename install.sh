@@ -27,44 +27,58 @@
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # BASH_SET_SAVED_OPTIONS=$(set +o) && set +e -x
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Set default exit code
+INSTALL_SH_EXIT_STATUS=0
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # check for command
 __cmd_exists() { command "$1" >/dev/null 2>&1 || return 1; }
 __function_exists() { command -v "$1" 2>&1 | grep -q "is a function" || return 1; }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Relative find functions
+__find_file_relative() { find "$1"/* -not -path '*env/*' -not -path '.git*' -type f 2>/dev/null | sed 's|'$1'/||g' | sort -u | grep -v '^$' | grep '^' || false; }
+__find_directory_relative() { find "$1"/* -not -path '*env/*' -not -path '.git*' -type d 2>/dev/null | sed 's|'$1'/||g' | sort -u | grep -v '^$' | grep '^' || false; }
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # custom functions
 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-INSTALL_SH_EXIT_STATUS=0
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Define Variables
 TEMPLATE_NAME="sample-template"
 CONFIG_CHECK_FILE=""
+OVER_WRITE_INIT="yes"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 TMP_DIR="/tmp/config-$TEMPLATE_NAME"
-CONFIG_DIR="/usr/local/share/template-files/config/$TEMPLATE_NAME"
+CONFIG_DIR="/usr/local/share/template-files/config"
 INIT_DIR="/usr/local/etc/docker/init.d"
-OVER_WRITE_INIT="yes"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 GIT_REPO="https://github.com/templatemgr/$TEMPLATE_NAME"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 [ "$TEMPLATE_NAME" = "sample-template" ] && exit 1
-[ -n "$DEFAULT_CONF_DIR" ] && DEFAULT_CONF_DIR="$DEFAULT_CONF_DIR/$TEMPLATE_NAME" || DEFAULT_CONF_DIR="$CONFIG_DIR"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+[ -d "$TMP_DIR" ] && rm -Rf "$TMP_DIR"
 git clone -q "$GIT_REPO" "$TMP_DIR" || exit 1
-if [ -f "/etc/$TEMPLATE_NAME" ]; then
-  rm -Rf /etc/${TEMPLATE_NAME:?}
-elif [ -d "/etc/$TEMPLATE_NAME" ]; then
-  rm -Rf /etc/${TEMPLATE_NAME:?}/*
-fi
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Main application
-mkdir -p "/etc/$TEMPLATE_NAME" "$DEFAULT_CONF_DIR" "$INIT_DIR"
-[ -f "$TMP_DIR/config/.gitkeep" ] && rm -Rf "$TMP_DIR/config/.gitkeep" || true
-[ -f "$TMP_DIR/init-scripts/.gitkeep" ] && rm -Rf "$TMP_DIR/init-scripts/.gitkeep" || true
+mkdir -p "$CONFIG_DIR" "$INIT_DIR"
+find "$TMP_DIR/" -iname '.gitkeep' -exec rm -f {} \;
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-[ -d "$TMP_DIR/config" ] && cp -Rf "$TMP_DIR/config/." "/etc/$TEMPLATE_NAME/" || true
+get_dir_list="$(__find_directory_relative "$TMP_DIR/config")"
+for dir in $get_dir_list; do
+  mkdir -p "$CONFIG_DIR/$dir" /etc/$dir
+done
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-[ -d "$TMP_DIR/config" ] && cp -Rf "$TMP_DIR/config/." "$DEFAULT_CONF_DIR/" || true
+get_file_list="$(__find_file_relative "$TMP_DIR/config")"
+for conf in $get_file_list; do
+  if [ -f "/etc/$conf" ]; then
+    rm -Rf /etc/${conf:?}
+  fi
+  if [ -d "$TMP_DIR/config/$conf" ]; then
+    cp -Rf "$TMP_DIR/config/$conf/." "/etc/$conf/"
+    cp -Rf "$TMP_DIR/config/$conf/." "$CONFIG_DIR/$conf/"
+  elif [ -e "TMP_DIR/config/$config" ]; then
+    cp -Rf "$TMP_DIR/config/$conf" "/etc/$conf"
+    cp -Rf "$TMP_DIR/config/$conf" "$CONFIG_DIR/$conf"
+  fi
+done
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 if [ -d "$TMP_DIR/init-scripts" ]; then
   init_scripts="$(ls -A "$TMP_DIR/init-scripts/" | grep '^' || false)"
@@ -84,10 +98,13 @@ fi
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 [ -d "$TMP_DIR" ] && rm -Rf "$TMP_DIR"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-if [ -n "$CONFIG_CHECK_FILE" ] && [ ! -f "$DEFAULT_CONF_DIR/$CONFIG_CHECK_FILE" ]; then
-  echo "Can not find a config file in $DEFAULT_CONF_DIR"
+if [ -n "$CONFIG_CHECK_FILE" ] && [ ! -f "$CONFIG_DIR/$CONFIG_CHECK_FILE" ]; then
+  echo "Can not find a config file in $CONFIG_DIR"
   INSTALL_SH_EXIT_STATUS=1
 fi
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# custom operations
+
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # End application
 # eval "$BASH_SET_SAVED_OPTIONS"
