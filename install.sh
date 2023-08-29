@@ -25,7 +25,8 @@
 # shellcheck disable=SC2199
 # shellcheck disable=SC2317
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# BASH_SET_SAVED_OPTIONS=$(set +o) && set +e -x
+# BASH_SET_SAVED_OPTIONS=$(set +o)
+[ "$DEBUGGER" = "on" ] && echo "Enabling debugging" && set -ex
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Set default exit code
 INSTALL_SH_EXIT_STATUS=0
@@ -61,24 +62,28 @@ git clone -q "$GIT_REPO" "$TMP_DIR" || exit 1
 mkdir -p "$CONFIG_DIR" "$INIT_DIR"
 find "$TMP_DIR/" -iname '.gitkeep' -exec rm -f {} \;
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-get_dir_list="$(__find_directory_relative "$TMP_DIR/config")"
-for dir in $get_dir_list; do
-  mkdir -p "$CONFIG_DIR/$dir" /etc/$dir
-done
+get_dir_list="$(__find_directory_relative "$TMP_DIR/config" || false)"
+if [ -n "$get_dir_list" ]; then
+  for dir in $get_dir_list; do
+    mkdir -p "$CONFIG_DIR/$dir" /etc/$dir
+  done
+fi
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-get_file_list="$(__find_file_relative "$TMP_DIR/config")"
-for conf in $get_file_list; do
-  if [ -f "/etc/$conf" ]; then
-    rm -Rf /etc/${conf:?}
-  fi
-  if [ -d "$TMP_DIR/config/$conf" ]; then
-    cp -Rf "$TMP_DIR/config/$conf/." "/etc/$conf/"
-    cp -Rf "$TMP_DIR/config/$conf/." "$CONFIG_DIR/$conf/"
-  elif [ -e "TMP_DIR/config/$config" ]; then
-    cp -Rf "$TMP_DIR/config/$conf" "/etc/$conf"
-    cp -Rf "$TMP_DIR/config/$conf" "$CONFIG_DIR/$conf"
-  fi
-done
+get_file_list="$(__find_file_relative "$TMP_DIR/config" || false)"
+if [ -n "$get_file_list" ]; then
+  for conf in $get_file_list; do
+    if [ -f "/etc/$conf" ]; then
+      rm -Rf /etc/${conf:?}
+    fi
+    if [ -d "$TMP_DIR/config/$conf" ]; then
+      cp -Rf "$TMP_DIR/config/$conf/." "/etc/$conf/"
+      cp -Rf "$TMP_DIR/config/$conf/." "$CONFIG_DIR/$conf/"
+    elif [ -e "TMP_DIR/config/$config" ]; then
+      cp -Rf "$TMP_DIR/config/$conf" "/etc/$conf"
+      cp -Rf "$TMP_DIR/config/$conf" "$CONFIG_DIR/$conf"
+    fi
+  done
+fi
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 if [ -d "$TMP_DIR/init-scripts" ]; then
   init_scripts="$(ls -A "$TMP_DIR/init-scripts/" | grep '^' || false)"
